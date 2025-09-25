@@ -64,4 +64,7 @@ export const estilo = StyleSheet.create({
         textAlign: "center",
         marginTop: 10,
     },
+
+    totalLabel: { fontWeight: "600", marginBottom: 6 },
+
 });

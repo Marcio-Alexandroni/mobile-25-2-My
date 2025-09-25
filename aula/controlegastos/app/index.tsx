@@ -1,77 +1,102 @@
-
-import { View, Text, Pressable, TextInput, StatusBar, FlatList, Image } from "react-native";
-import { useState } from "react";
+import { View, Text, Pressable, TextInput, StatusBar, FlatList, Image, Modal } from "react-native";
+import { useMemo, useState, useEffect } from "react";
 import { estilo } from "./estilo";
 import { SafeAreaView } from "react-native-safe-area-context";
 import RenderItemGasto from "./RenderItemGasto";
 import ListaGasto from "./ListaGasto";
 import ListaGastoDragDrop from "./ListaGastoDragDrop";
-import PopUp from "./PopUp";
+import RenderEntradaGasto from "./RenderEntradaGasto";
 
 export default function Index() {
+  type Gasto = { id: number; descricao: string; valor: number };
 
-  type Gasto = { id: number, descricao: string, valor: number };
+  const [gasto, addGasto] = useState<Gasto[]>([]);
+  const [modalVisivel, setModalVisivel] = useState(false);
 
-  let [titulo, setTitulo] = useState('');
-  let [gasto, addGasto] = useState<Gasto[]>([]);
+  const total = useMemo(
+    () => gasto.reduce((acc, g) => acc + (Number(g.valor) || 0), 0),
+    [gasto]
+  );
 
-  function onTituloChange(textoDigitado: string) {
-    console.log(textoDigitado);
-    setTitulo(textoDigitado);
-  }
+  // Exibe o modal quando ultrapassar 1000
+  useEffect(() => {
+    if (total > 1000) setModalVisivel(true);
+  }, [total]);
 
-  function addGastoHandler() {
-    // ["Gasto 1", "Gasto 2"]
-    // ...["Gasto 1", "Gasto 2"] = "Gasto1", "Gasto 2"
-    // "Gasto1", "Gasto 2", titulo = ["Gasto1", "Gasto 2", titulo]
-
-    //[{id:1, descricao: "Gasto 1", valor: 100}, {id:2, descricao: "Gasto 2", valor: 200}]
-    let gastosAtuais = [...gasto];
-    const novoGasto: Gasto = { id: Date.now(), descricao: titulo, valor: 0 };
+  function addGastoHandler(descricao: string, valor: number) {
+    const gastosAtuais = [...gasto];
+    const novoGasto: Gasto = { id: Date.now(), descricao, valor };
     gastosAtuais.push(novoGasto);
     addGasto(gastosAtuais);
-    setTitulo("");
   }
 
   function removerGastoLista(index: number) {
-    let gastosAtuais = [...gasto];
+    const gastosAtuais = [...gasto];
     gastosAtuais.splice(index, 1);
     addGasto(gastosAtuais);
   }
 
-  function atualizarGasto(gasto: Gasto) {
-    setTitulo(gasto.descricao);
+  // onPress da linha (opcional): não precisamos mais editar o input do topo
+  function atualizarGasto(_g: Gasto) {
+    // noop – mantido para compatibilidade com ListaGasto
   }
 
+  const formatBRL = (n: number) =>
+    (isNaN(n) ? 0 : n).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
+  return (
+    <SafeAreaView style={{ flex: 1 }}>
+      <StatusBar />
+      <View style={estilo.container}>
 
-  return <SafeAreaView style={{ flex: 1 }}>
-    <StatusBar />
-    <View style={estilo.container}>
-      {/* Área superior: input + botão */}
-      <View style={estilo.topSection}>
-        <TextInput style={estilo.input} onChangeText={onTituloChange} value={titulo} placeholder="Descrição do Gasto" />
-        <Pressable style={({ pressed }) => [estilo.button, pressed && estilo.buttonPressed]}
-          onPress={addGastoHandler} >
-          <Text style={estilo.buttonText}>Adicionar</Text>
-        </Pressable>
+        {/* Entrada (descrição + valor + botão) */}
+        <RenderEntradaGasto onAdd={addGastoHandler} />
+
+        {/* Campo Total (somente leitura) */}
+        <View style={{ marginTop: 6 }}>
+          <Text style={{ fontWeight: "600", marginBottom: 6 }}>Total</Text>
+          <TextInput
+            style={[estilo.input, { backgroundColor: "#eee" }]}
+            editable={false}
+            value={formatBRL(total)}
+          />
+        </View>
+
+        {/* Lista de gastos */}
+        <ListaGasto gasto={gasto} onPress={atualizarGasto} onLongPress={removerGastoLista} />
+
+        {/* Modal quando total > 1000 */}
+        <Modal
+          visible={modalVisivel}
+          animationType="slide"
+          transparent
+          onRequestClose={() => setModalVisivel(false)}
+        >
+          <View style={{
+            flex: 1, backgroundColor: "rgba(0,0,0,0.4)", justifyContent: "center", alignItems: "center", padding: 24
+          }}>
+            <View style={{
+              width: "100%", borderRadius: 12, backgroundColor: "#fff", padding: 20, gap: 12
+            }}>
+              <Text style={{ fontSize: 18, fontWeight: "700" }}>Atenção</Text>
+              <Text style={{ fontSize: 16 }}>
+                O total de gastos ultrapassou R$ 1.000,00 ({formatBRL(total)}).
+              </Text>
+              <Pressable
+                style={({ pressed }) => [
+                  estilo.button,
+                  pressed && estilo.buttonPressed,
+                  { width: "100%" }
+                ]}
+                onPress={() => setModalVisivel(false)}
+              >
+                <Text style={estilo.buttonText}>OK, entendi</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Modal>
 
       </View>
-
-      {/* Área inferior: lista de gastos */}
-      <ListaGasto gasto={gasto} onPress={atualizarGasto} onLongPress={removerGastoLista} />
-
-      { /* 
-      <ListaGastoDragDrop gastos={gasto} addGasto={addGasto} />
-      */}
-
-      <PopUp texto="Teste Modal" exibir={true} />
-
-    </View>
-
-  </SafeAreaView>
-
-
+    </SafeAreaView>
+  );
 }
-
-
